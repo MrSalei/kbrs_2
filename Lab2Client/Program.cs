@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Lab2DistantMemory
+namespace Lab2Client
 {
     class Program
     {
