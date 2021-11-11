@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lab1Kasiski", "Lab1Kasiski\Lab1Kasiski.csproj", "{C897913C-835D-4BAE-BD61-2AECCF88E4DC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lab2DistantMemory", "Lab2DistantMemory\Lab2DistantMemory.csproj", "{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,17 @@ Global
 		{C897913C-835D-4BAE-BD61-2AECCF88E4DC}.Release|x64.Build.0 = Release|Any CPU
 		{C897913C-835D-4BAE-BD61-2AECCF88E4DC}.Release|x86.ActiveCfg = Release|Any CPU
 		{C897913C-835D-4BAE-BD61-2AECCF88E4DC}.Release|x86.Build.0 = Release|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Debug|x64.Build.0 = Debug|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Debug|x86.Build.0 = Debug|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Release|x64.ActiveCfg = Release|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Release|x64.Build.0 = Release|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Release|x86.ActiveCfg = Release|Any CPU
+		{2DB1804E-D1C3-4F7F-9301-1C67A6D563C4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
