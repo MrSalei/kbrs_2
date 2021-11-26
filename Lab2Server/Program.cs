@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace Lab2Server
 {
@@ -6,6 +6,8 @@ namespace Lab2Server
     {
         static void Main(string[] args)
         {
+            Server.RegisterUser("UserA", "11111");
+            Server.RegisterUser("UserB", "22222");
             Server.StartListening();
         }
     }

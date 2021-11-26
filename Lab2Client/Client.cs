@@ -183,11 +183,13 @@ namespace Lab2Client
         {
             List<byte> requestLine = new List<byte>();
             ecdsaKey = LoadEcdsa();
+            byte[] loginBytes = Encoding.ASCII.GetBytes(login);
+            byte[] passwordBytes = Encoding.ASCII.GetBytes(password);
             requestLine.AddRange(Encoding.ASCII.GetBytes("<SET>"));
-            requestLine.AddRange(BitConverter.GetBytes(login.Length));
-            requestLine.AddRange(Encoding.ASCII.GetBytes(login));
-            requestLine.AddRange(BitConverter.GetBytes(password.Length));
-            requestLine.AddRange(Encoding.ASCII.GetBytes(password));
+            requestLine.AddRange(BitConverter.GetBytes(loginBytes.Length));
+            requestLine.AddRange(loginBytes);
+            requestLine.AddRange(BitConverter.GetBytes(passwordBytes.Length));
+            requestLine.AddRange(passwordBytes);
             requestLine.AddRange(ecdsaKey.ExportECPrivateKey());
             requestLine.AddRange(Encoding.ASCII.GetBytes("<EOF>"));
             return requestLine.ToArray();
@@ -214,9 +216,10 @@ namespace Lab2Client
         public static byte[] CreateNewRequest(string pathToFile, string message)
         {
             List<byte> requestLine = new List<byte>();
+            byte[] file = Encoding.ASCII.GetBytes(pathToFile);
             requestLine.AddRange(Encoding.ASCII.GetBytes("<NEW>"));
-            requestLine.AddRange(BitConverter.GetBytes(pathToFile.Length));
-            requestLine.AddRange(Encoding.ASCII.GetBytes(pathToFile));
+            requestLine.AddRange(BitConverter.GetBytes(file.Length));
+            requestLine.AddRange(file);
             byte[] encMsg = CryptoHelp.GetEncryptedMessage(sessionKey, message);
             requestLine.AddRange(encMsg);
             requestLine.AddRange(Encoding.ASCII.GetBytes("<EOF>"));

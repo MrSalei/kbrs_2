@@ -16,7 +16,6 @@ namespace Lab2Server
         private static Dictionary<string, string> _clients = new Dictionary<string, string>();
         public static void StartListening()
         {
-            _clients.Add("user", "password");
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             IPAddress ipAddress = ipHostInfo.AddressList[0];
             IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 11000);
@@ -37,7 +36,6 @@ namespace Lab2Server
                     listener.BeginAccept(
                         new AsyncCallback(AcceptCallback),
                         listener);
-
                     allDone.WaitOne();
                 }
 
@@ -77,10 +75,9 @@ namespace Lab2Server
             {
                 state.bytesCollector.AddRange(state.buffer);
                 content = Encoding.ASCII.GetString(state.bytesCollector.ToArray());
-                Console.WriteLine(content);
                 if (content.IndexOf("<EOF>") > -1)
                 { 
-                    ParseRequest(state.bytesCollector.ToArray(), ref state);
+                    ParseRequest(state.bytesCollector.ToArray(), state);
                 }
                 else
                 {
@@ -91,40 +88,47 @@ namespace Lab2Server
             }
         }
 
-        private static void ParseRequest(byte[] request, ref StateObject state)
+        public static void RegisterUser(string username, string password)
+        {
+            _clients.Add(username, password);
+        }
+
+        private static void ParseRequest(byte[] request, StateObject state)
         {
             string option = Encoding.ASCII.GetString(request[..5]);
-            if (state.validTo.Ticks < DateTime.Now.Ticks)
-            {
-                Send(state, CreateErrResponse(state, "KEY EXPIRED"));
-            }
 
+            byte[] response;
+            Console.WriteLine($"{option}");
             switch (option)
             {
                 case "<SET>":
-                    Send(state, CreateSetResponse(state, request));
+                    response = CreateSetResponse(ref state, request);
                     break;
                 case "<DIR>":
-                    Send(state, CreateDirResponse(state, request));
+                    response = CreateDirResponse(ref state, request);
                     break;
                 case "<GET>":
-                    Send(state, CreateGetResponse(state, request));
+                    response = CreateGetResponse(ref state, request);
                     break;
                 case "<NEW>":
-                    Send(state, CreateNewResponse(state, request));
+                    response = CreateNewResponse(ref state, request);
                     break;
                 case "<MOD>":
-                    Send(state, CreateNewResponse(state, request));
+                    response = CreateNewResponse(ref state, request);
                     break;
                 case "<DEL>":
-                    Send(state, CreateDelResponse(state, request));
+                    response = CreateDelResponse(ref state, request);
                     break;
                 default:
+                    response = CreateErrResponse(ref state, "No such option");
                     break;
             }
+
+            Console.WriteLine($"sooqa: {DateTime.Now.Ticks.ToString()} {state.sessionKey is null}");
+            Send(state, response);
         }
 
-        private static byte[] CreateErrResponse(StateObject state, string msg)
+        private static byte[] CreateErrResponse(ref StateObject state, string msg)
         {
             List<byte> bytes = new List<byte>();
             byte[] bMsg = Encoding.ASCII.GetBytes(msg);
@@ -134,7 +138,7 @@ namespace Lab2Server
             return bytes.ToArray();
         }
 
-        private static byte[] CreateSetResponse(StateObject state, byte[] request)
+        private static byte[] CreateSetResponse(ref StateObject state, byte[] request)
         {
             int offset = 5;
             int loginSize = BitConverter.ToInt32(request[offset..(offset + 4)]);
@@ -148,19 +152,20 @@ namespace Lab2Server
 
             if (!_clients.ContainsKey(login))
             {
-                return CreateErrResponse(state, "Not registered");
+                return CreateErrResponse(ref state, "Not registered");
             }
 
             if (!_clients[login].Equals(password))
             {
-                return CreateErrResponse(state, "Wrong password");
+                return CreateErrResponse(ref state, "Wrong password");
             }
 
             Random rng = new Random((int)DateTime.Now.Ticks);
             List<byte> bytes = new List<byte>();
-            state.key.ImportECPrivateKey(request[5..^5], out _);
+            state.key.ImportECPrivateKey(request[offset..^5], out _);
             state.sessionKey = new byte[32];
             rng.NextBytes(state.sessionKey);
+
             byte[] signature = state.key.SignData(state.sessionKey, HashAlgorithmName.SHA256);
             int size = 4 + 4 + state.sessionKey.Length + signature.Length;
             bytes.AddRange(Encoding.ASCII.GetBytes("<KEY>"));
@@ -168,12 +173,11 @@ namespace Lab2Server
             bytes.AddRange(BitConverter.GetBytes(state.sessionKey.Length));
             bytes.AddRange(state.sessionKey);
             bytes.AddRange(signature);
-            state.validTo = DateTime.Now;
-            state.validTo.AddMinutes(5);
+            state.validTo = new DateTime(DateTime.Now.AddMinutes(5).Ticks);
             return bytes.ToArray();
         }
 
-        private static byte[] CreateDirResponse(StateObject state, byte[] request)
+        private static byte[] CreateDirResponse(ref StateObject state, byte[] request)
         {
             List<byte> bytes = new List<byte>();
             string[] files = Directory.GetFiles("./files/");
@@ -190,8 +194,13 @@ namespace Lab2Server
             return bytes.ToArray();
         }
 
-        private static byte[] CreateGetResponse(StateObject state, byte[] request)
+        private static byte[] CreateGetResponse(ref StateObject state, byte[] request)
         {
+            if (state.validTo.Ticks < DateTime.Now.Ticks)
+            {
+                return CreateErrResponse(ref state, "KEY EXPIRED");
+            }
+
             int fileLength = BitConverter.ToInt32(request[5..9]);
             string fileName = Encoding.ASCII.GetString(request[9..(9 + fileLength)]);
             string msg = File.ReadAllText($"./files/{fileName}");
@@ -201,22 +210,33 @@ namespace Lab2Server
             return bytes.ToArray();
         }
 
-        private static byte[] CreateNewResponse(StateObject state, byte[] request)
+        private static byte[] CreateNewResponse(ref StateObject state, byte[] request)
         {
+            if (state.validTo.Ticks < DateTime.Now.Ticks)
+            {
+                return CreateErrResponse(ref state, "KEY EXPIRED");
+            }
+
             int fileLength = BitConverter.ToInt32(request[5..9]);
             string fileName = Encoding.ASCII.GetString(request[9..(9 + fileLength)]);
-            string decMsg = CryptoHelp.GetDecryptedMessage(state.sessionKey, request[(9 + fileLength)..^5]);
-            File.Create($"./files/{fileName}");
+            string decMsg = CryptoHelp.GetDecryptedMessage(state.sessionKey, request[(9 + fileLength + 4)..^5]);
             File.WriteAllText($"./files/{fileName}", decMsg);
+            string msg = "Request successful";
 
             List<byte> bytes = new List<byte>();
             bytes.AddRange(Encoding.ASCII.GetBytes("<SUC>"));
-            bytes.AddRange(BitConverter.GetBytes(9));
+            bytes.AddRange(BitConverter.GetBytes(9 + msg.Length));
+            bytes.AddRange(Encoding.ASCII.GetBytes(msg));
             return bytes.ToArray();
         }
 
-        private static byte[] CreateDelResponse(StateObject state, byte[] request)
+        private static byte[] CreateDelResponse(ref StateObject state, byte[] request)
         {
+            if (state.validTo.Ticks < DateTime.Now.Ticks)
+            {
+                return CreateErrResponse(ref state, "KEY EXPIRED");
+            }
+
             string fileName = Encoding.ASCII.GetString(request[5..^5]);
             File.Delete($"./files/{fileName}");
 
@@ -228,6 +248,7 @@ namespace Lab2Server
 
         private static void Send(StateObject state, byte[] data)
         {
+            Console.WriteLine($"Sending {Encoding.ASCII.GetString(data)}");
             state.workSocket.BeginSend(data, 0, data.Length, 0,
                 new AsyncCallback(SendCallback), state);
         }
@@ -239,7 +260,10 @@ namespace Lab2Server
                 StateObject oldState = (StateObject)ar.AsyncState;
                 StateObject newState = new StateObject();
                 newState.workSocket = oldState.workSocket;
-                newState.sessionKey = oldState.sessionKey;
+                newState.sessionKey = new byte[32];
+                Console.WriteLine($"in the end {oldState.sessionKey is null}");
+                oldState.sessionKey.CopyTo(newState.sessionKey, 0);
+                newState.validTo = new DateTime(oldState.validTo.Ticks);
 
                 int bytesSent = newState.workSocket.EndSend(ar);
                 Console.WriteLine("Sent {0} bytes to client.", bytesSent);
