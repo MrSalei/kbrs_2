@@ -11,7 +11,7 @@ namespace Lab2Client
         {
             Client.StartClient();
 
-            Client.GenerateNewEcdsa();
+            Client.GenerateNewEcdh();
             Client._server.Send(Client.CreateInitialRequest("UserA", "11111"));
             Client.RecieveServerResponse();
             Client._server.Send(Client.CreateDirRequest());

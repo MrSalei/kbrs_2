@@ -13,6 +13,7 @@ namespace Lab2Client
         public static Socket _server;
         public static ECCurve curve;
         public static ECDsa ecdsaKey;
+        public static ECDiffieHellman ecdhKey;
         public static byte[] sessionKey;
         public static void StartClient()
         {
@@ -100,14 +101,9 @@ namespace Lab2Client
             switch (code)
             {
                 case "<KEY>":
-                    int keySize = BitConverter.ToInt32(totalResponse[..4]);
-                    sessionKey = totalResponse[4..(4 + keySize)];
-                    byte[] signature = totalResponse[(4 + keySize)..];
-                    if (!ecdsaKey.VerifyData(sessionKey, signature, HashAlgorithmName.SHA256))
-                    {
-                        Console.WriteLine("Sign is not verified. Network possibly compromised.");
-                        StopClient();
-                    }
+                    ECDiffieHellmanOpenSsl peerKey = new ECDiffieHellmanOpenSsl(ECCurve.NamedCurves.nistP521);
+                    peerKey.ImportSubjectPublicKeyInfo(totalResponse, out _);
+                    sessionKey = ecdhKey.DeriveKeyMaterial(peerKey.PublicKey);
 
                     break;
                 case "<TXT>":
@@ -128,14 +124,14 @@ namespace Lab2Client
             }
         }
 
-        public static void GenerateNewEcdsa()
+        public static void GenerateNewEcdh()
         {
             ECCurve kurwa = ECCurve.NamedCurves.nistP521;
-            ECDsa daKey = ECDsa.Create(kurwa);
+            ECDiffieHellman daKey = ECDiffieHellman.Create(kurwa);
             SaveEcdsa(daKey);
         }
 
-        public static void SaveEcdsa(ECDsa key)
+        public static void SaveEcdsa(ECDiffieHellman key)
         {
             ECParameters parameters = key.ExportParameters(true);
             List<byte> persist = new List<byte>();
@@ -151,7 +147,7 @@ namespace Lab2Client
             File.WriteAllBytes("keys.k", persist.ToArray());
         }
 
-        public static ECDsa LoadEcdsa()
+        public static ECDiffieHellman LoadEcdh()
         {
             ECParameters parameters = new ECParameters();
             byte[] buf = File.ReadAllBytes("keys.k");
@@ -175,14 +171,14 @@ namespace Lab2Client
             parameters.Q.X = xParam;
             parameters.Q.Y = yParam;
 
-            ECDsa eCDsa = ECDsa.Create(parameters);
-            return eCDsa;
+            ECDiffieHellman eCDH = ECDiffieHellman.Create(parameters);
+            return eCDH;
         }
 
         public static byte[] CreateInitialRequest(string login, string password)
         {
             List<byte> requestLine = new List<byte>();
-            ecdsaKey = LoadEcdsa();
+            ecdhKey = LoadEcdh();
             byte[] loginBytes = Encoding.ASCII.GetBytes(login);
             byte[] passwordBytes = Encoding.ASCII.GetBytes(password);
             requestLine.AddRange(Encoding.ASCII.GetBytes("<SET>"));
@@ -190,7 +186,7 @@ namespace Lab2Client
             requestLine.AddRange(loginBytes);
             requestLine.AddRange(BitConverter.GetBytes(passwordBytes.Length));
             requestLine.AddRange(passwordBytes);
-            requestLine.AddRange(ecdsaKey.ExportECPrivateKey());
+            requestLine.AddRange(ecdhKey.ExportSubjectPublicKeyInfo());
             requestLine.AddRange(Encoding.ASCII.GetBytes("<EOF>"));
             return requestLine.ToArray();
         }

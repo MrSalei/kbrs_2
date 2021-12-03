@@ -14,6 +14,7 @@ namespace Lab2Server
         public static ManualResetEvent allDone = new ManualResetEvent(false);
         private static List<Socket> _socketsList = new List<Socket>();
         private static Dictionary<string, string> _clients = new Dictionary<string, string>();
+        private static ECDiffieHellmanOpenSsl _serverKey = new ECDiffieHellmanOpenSsl(ECCurve.NamedCurves.nistP521);
         public static void StartListening()
         {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
@@ -162,17 +163,14 @@ namespace Lab2Server
 
             Random rng = new Random((int)DateTime.Now.Ticks);
             List<byte> bytes = new List<byte>();
-            state.key.ImportECPrivateKey(request[offset..^5], out _);
-            state.sessionKey = new byte[32];
-            rng.NextBytes(state.sessionKey);
+            state.key.ImportSubjectPublicKeyInfo(request[offset..^5], out _);
+            state.sessionKey = _serverKey.DeriveKeyMaterial(state.key.PublicKey);
 
-            byte[] signature = state.key.SignData(state.sessionKey, HashAlgorithmName.SHA256);
-            int size = 4 + 4 + state.sessionKey.Length + signature.Length;
+            byte[] serverKeyPublic = _serverKey.ExportSubjectPublicKeyInfo();
+            int size = 4 + serverKeyPublic.Length;
             bytes.AddRange(Encoding.ASCII.GetBytes("<KEY>"));
             bytes.AddRange(BitConverter.GetBytes(size));
-            bytes.AddRange(BitConverter.GetBytes(state.sessionKey.Length));
-            bytes.AddRange(state.sessionKey);
-            bytes.AddRange(signature);
+            bytes.AddRange(serverKeyPublic);
             state.validTo = new DateTime(DateTime.Now.AddMinutes(5).Ticks);
             return bytes.ToArray();
         }
@@ -288,7 +286,7 @@ namespace Lab2Server
 
             public byte[] buffer = new byte[BufferSize];
 
-            public ECDsa key = ECDsa.Create();
+            public ECDiffieHellmanOpenSsl key = new ECDiffieHellmanOpenSsl(ECCurve.NamedCurves.nistP521);
 
             public byte[] sessionKey;
 
