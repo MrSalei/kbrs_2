@@ -18,7 +18,9 @@ namespace Lab2Client
             Client.RecieveServerResponse();
             Client._server.Send(Client.CreateGetRequest("file1.txt"));
             Client.RecieveServerResponse();
-            Client._server.Send(Client.CreateNewRequest("file3.txt", "I HATE MYSELF AND I WANT TO DIE"));
+            Client._server.Send(Client.CreateNewRequest("file2.txt", "I HATE MYSELF AND I WANT TO DIE"));
+            Client.RecieveServerResponse();
+            Client._server.Send(Client.CreateDelRequest("file2.txt"));
             Client.RecieveServerResponse();
 
             Console.Read();

@@ -225,5 +225,15 @@ namespace Lab2Client
             requestLine.AddRange(Encoding.ASCII.GetBytes("<EOF>"));
             return requestLine.ToArray();
         }
+
+        public static byte[] CreateDelRequest(string pathToFile)
+        {
+            List<byte> requestLine = new List<byte>();
+            byte[] file = Encoding.ASCII.GetBytes(pathToFile);
+            requestLine.AddRange(Encoding.ASCII.GetBytes("<DEL>"));
+            requestLine.AddRange(file);
+            requestLine.AddRange(Encoding.ASCII.GetBytes("<EOF>"));
+            return requestLine.ToArray();
+        }
     }
 }

@@ -77,7 +77,7 @@ namespace Lab2Server
                 content = Encoding.ASCII.GetString(state.bytesCollector.ToArray());
                 if (content.IndexOf("<EOF>") > -1)
                 { 
-                    ParseRequest(state.bytesCollector.ToArray(), state);
+                    ParseRequest(state.bytesCollector.ToArray()[..(content.IndexOf("<EOF>") + 5)], state);
                 }
                 else
                 {
@@ -221,12 +221,12 @@ namespace Lab2Server
             string fileName = Encoding.ASCII.GetString(request[9..(9 + fileLength)]);
             string decMsg = CryptoHelp.GetDecryptedMessage(state.sessionKey, request[(9 + fileLength + 4)..^5]);
             File.WriteAllText($"./files/{fileName}", decMsg);
-            string msg = "Request successful";
+            byte[] msg = Encoding.ASCII.GetBytes("Request successful");
 
             List<byte> bytes = new List<byte>();
             bytes.AddRange(Encoding.ASCII.GetBytes("<SUC>"));
-            bytes.AddRange(BitConverter.GetBytes(9 + msg.Length));
-            bytes.AddRange(Encoding.ASCII.GetBytes(msg));
+            bytes.AddRange(BitConverter.GetBytes(4 + msg.Length));
+            bytes.AddRange(msg);
             return bytes.ToArray();
         }
 
@@ -238,11 +238,16 @@ namespace Lab2Server
             }
 
             string fileName = Encoding.ASCII.GetString(request[5..^5]);
+            Console.WriteLine(fileName);
+            Console.WriteLine(request.Length);
             File.Delete($"./files/{fileName}");
+
+            byte[] msg = Encoding.ASCII.GetBytes("Request successful");
 
             List<byte> bytes = new List<byte>();
             bytes.AddRange(Encoding.ASCII.GetBytes("<SUC>"));
-            bytes.AddRange(BitConverter.GetBytes(9));
+            bytes.AddRange(BitConverter.GetBytes(4 + msg.Length));
+            bytes.AddRange(msg);
             return bytes.ToArray();
         }
 
